@@ -2,5 +2,4 @@
 *.exe
 .vscode/
 test
-
-expected.hpp
+build/

@@ -11,8 +11,15 @@ namespace detail {
 
 class bad_optional_access : public std::exception {
   public:
-    explicit bad_optional_access(char const* const error) : std::exception(error) {
+    explicit bad_optional_access(const char* const error) : error_(error) {
     }
+
+    virtual const char *what() const noexcept override {
+        return error_;
+    }
+
+  private:
+    const char* const error_;
 };
 
 template <typename ExceptionType>
