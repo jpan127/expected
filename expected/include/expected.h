@@ -157,6 +157,15 @@ class expected {
         return *this;
     }
 
+    constexpr ValueType &operator*() {
+        detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
+        return value_;
+    }
+    constexpr const ValueType &operator*() const {
+        detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
+        return value_;
+    }
+
     /// Check for existence of value
     constexpr operator bool() const noexcept { return has_value(); }
     constexpr bool has_value() const noexcept { return has_value_; }
