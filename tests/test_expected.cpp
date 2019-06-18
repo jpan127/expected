@@ -165,4 +165,14 @@ TEST_CASE("Factory", "expected") {
     REQUIRE(e.error() == Error::Terrible);
 }
 
+TEST_CASE("Dereference", "expected") {
+    constexpr int kValue = 127127;
+    Expected e = Data{.value = kValue};
+    REQUIRE(!exception_thrown([&e] { *e; }));
+    REQUIRE((*e).value == kValue);
+
+    e = Error{};
+    REQUIRE(exception_thrown([&e] { *e; }));
+}
+
 } // namespace
