@@ -23,8 +23,8 @@ class bad_optional_access : public std::exception {
 };
 
 template <typename ExceptionType>
-void throw_exception(__attribute__((unused)) const bool condition,
-                     __attribute__((unused)) const char *error) {
+void throw_exception([[maybe_unused]] const bool condition,
+                     [[maybe_unused]] const char *error) {
 #ifndef PSTD_EXPECTED_DISABLE_EXCEPTIONS
     if (condition) {
         throw ExceptionType(error);
@@ -179,6 +179,7 @@ class expected {
         return *this;
     }
 
+    /// Dereference operator
     [[nodiscard]] constexpr ValueType &operator*() {
         detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
         return value_;
@@ -186,6 +187,14 @@ class expected {
     [[nodiscard]] constexpr const ValueType &operator*() const {
         detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
         return value_;
+    }
+    [[nodiscard]] constexpr ValueType *operator->() {
+        detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
+        return std::addressof(value_);
+    }
+    [[nodiscard]] constexpr const ValueType *operator->() const {
+        detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
+        return std::addressof(value_);
     }
 
     /// Check for existence of value

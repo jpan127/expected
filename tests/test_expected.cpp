@@ -183,12 +183,17 @@ TEST_CASE("Factory", "expected") {
 
 TEST_CASE("Dereference", "expected") {
     constexpr int kValue = 127127;
+    constexpr int kOtherValue = 888888;
     Expected e = Data{.value = kValue};
     REQUIRE(!exception_thrown([&e] { *e; }));
     REQUIRE((*e).value == kValue);
+    REQUIRE(e->value == kValue);
+    e->value = kOtherValue;
+    REQUIRE(e->value == kOtherValue);
 
     e = Error{};
     REQUIRE(exception_thrown([&e] { *e; }));
+    REQUIRE(exception_thrown([&e] { e->value = 5; }));
 }
 
 TEST_CASE("Alternatives", "expected") {
