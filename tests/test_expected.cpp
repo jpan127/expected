@@ -159,17 +159,62 @@ TEST_CASE("InPlaceConstruction", "expected") {
     constexpr int kY = 456;
     constexpr int kZ = 789;
 
-    Type v(Type::in_place{}, kX, kY, kZ);
-    REQUIRE(has_value(v));
-    REQUIRE(v.value().x == kX);
-    REQUIRE(v.value().y == kY);
-    REQUIRE(v.value().z == kZ);
-
-    Type e(Type::unexpect{}, kX, kY, kZ);
-    REQUIRE(!has_value(e));
-    REQUIRE(e.error().x == kX);
-    REQUIRE(e.error().y == kY);
-    REQUIRE(e.error().z == kZ);
+    SECTION("Expected Constructor") {
+        Type v(Type::in_place{}, kX, kY, kZ);
+        REQUIRE(has_value(v));
+        REQUIRE(v.value().x == kX);
+        REQUIRE(v.value().y == kY);
+        REQUIRE(v.value().z == kZ);
+    }
+    SECTION("Unexpected Constructor") {
+        Type e(Type::unexpect{}, kX, kY, kZ);
+        REQUIRE(!has_value(e));
+        REQUIRE(e.error().x == kX);
+        REQUIRE(e.error().y == kY);
+        REQUIRE(e.error().z == kZ);
+    }
+    SECTION("Expected Reconstruction") {
+        Type v;
+        v.emplace(Type::in_place{}, kX, kY, kZ);
+        REQUIRE(has_value(v));
+        REQUIRE(v.value().x == kX);
+        REQUIRE(v.value().y == kY);
+        REQUIRE(v.value().z == kZ);
+    }
+    SECTION("Unexpected Reconstruction") {
+        Type e;
+        e.emplace(Type::unexpect{}, kX, kY, kZ);
+        REQUIRE(!has_value(e));
+        REQUIRE(e.error().x == kX);
+        REQUIRE(e.error().y == kY);
+        REQUIRE(e.error().z == kZ);
+    }
+    SECTION("Alternating") {
+        // Value
+        Type e(Type::in_place{}, kX, kY, kZ);
+        REQUIRE(has_value(e));
+        REQUIRE(e.value().x == kX);
+        REQUIRE(e.value().y == kY);
+        REQUIRE(e.value().z == kZ);
+        // Error
+        e.emplace(Type::unexpect{}, kX, kY, kZ);
+        REQUIRE(!has_value(e));
+        REQUIRE(e.error().x == kX);
+        REQUIRE(e.error().y == kY);
+        REQUIRE(e.error().z == kZ);
+        // Value
+        e.emplace(Type::in_place{}, kX, kY, kZ);
+        REQUIRE(has_value(e));
+        REQUIRE(e.value().x == kX);
+        REQUIRE(e.value().y == kY);
+        REQUIRE(e.value().z == kZ);
+        // Error
+        e.emplace(Type::unexpect{}, kX, kY, kZ);
+        REQUIRE(!has_value(e));
+        REQUIRE(e.error().x == kX);
+        REQUIRE(e.error().y == kY);
+        REQUIRE(e.error().z == kZ);
+    }
 }
 
 TEST_CASE("Factory", "expected") {

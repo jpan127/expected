@@ -75,6 +75,8 @@ class unexpected {
     template <typename ... Args>
     constexpr unexpected(Args && ... args) : error_(std::forward<Args>(args)...) {}
 
+    ~unexpected() = default;
+
     /// Allow copy, move, assignment
     constexpr unexpected(const SelfType &other) = default;
     constexpr unexpected(SelfType &&other) = default;
@@ -242,6 +244,32 @@ class expected {
         return (!has_value_) ? (error_.value()) : (alternative);
     }
 
+    /// Constructs a ValueType in place, destroying the previous object
+    template <typename ... Args>
+    void emplace(in_place, Args && ... args) {
+        if (has_value_) {
+            value_.~ValueType();
+        } else {
+            error_.~decltype(error_)();
+        }
+
+        ::new (std::addressof(value_)) ValueType(std::forward<Args>(args)...);
+        has_value_ = true;
+    }
+
+    /// Constructs a ErrorType in place, destroying the previous object
+    template <typename ... Args>
+    void emplace(unexpect, Args && ... args) {
+        if (has_value_) {
+            value_.~ValueType();
+        } else {
+            error_.~decltype(error_)();
+        }
+
+        ::new (std::addressof(error_)) unexpected<ErrorType>(std::forward<Args>(args)...);
+        has_value_ = false;
+    }
+
   private:
     union {
         ValueType value_;
@@ -263,7 +291,7 @@ class expected {
             // Destruct value
             value_.~ValueType();
             // Set error
-            ::new (std::addressof(error_)) ErrorType(std::move(error));
+            ::new (std::addressof(error_)) unexpected<ErrorType>(std::move(error));
             has_value_ = false;
         } else {
             error_ = std::move(error);
