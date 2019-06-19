@@ -4,11 +4,22 @@
 
 #include <string>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 namespace {
 
 struct Data {
     int value = 5;
 };
+
+constexpr bool operator==(const Data &a, const Data &b) { return a.value == b.value; }
+constexpr bool operator!=(const Data &a, const Data &b) { return a.value != b.value; }
+constexpr bool operator<(const Data &a, const Data &b)  { return a.value <  b.value; }
+constexpr bool operator<=(const Data &a, const Data &b) { return a.value <= b.value; }
+constexpr bool operator>(const Data &a, const Data &b)  { return a.value >  b.value; }
+constexpr bool operator>=(const Data &a, const Data &b) { return a.value >= b.value; }
 
 enum class Error {
     Bad,
@@ -19,9 +30,8 @@ enum class Error {
 using Expected = pstd::expected<Data, Error>;
 
 static_assert(sizeof(Expected) == sizeof(Error) + 4);
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-result"
+static_assert(pstd::detail::is_comparable_v<Data>);
+static_assert(pstd::detail::is_comparable_v<Error>);
 
 template <typename F>
 bool exception_thrown(F &&f) {
@@ -133,11 +143,14 @@ TEST_CASE("InPlaceConstruction", "expected") {
         int x=0, y=0, z=0;
         V() = default;
         V(int x, int y, int z) noexcept : x(x), y(y), z(z){}
+        ~V() noexcept = default;
     };
 
     struct E {
         int x=0, y=0, z=0;
+        E() noexcept = default;
         E(int x, int y, int z) noexcept : x(x), y(y), z(z){}
+        ~E() noexcept = default;
     };
 
     using Type = pstd::expected<V, E>;
@@ -201,6 +214,119 @@ TEST_CASE("Alternatives", "expected") {
     }
 }
 
-#pragma GCC diagnostic pop
+TEST_CASE("Comparison", "expected") {
+    SECTION("Unexpected") {
+        using Unexpected = pstd::unexpected<Error>;
+
+        // Equality
+        {
+            const Unexpected u1{Error::Bad};
+            const Unexpected u2{Error::Bad};
+            REQUIRE(u1 == u2);
+        }
+        {
+            const Unexpected u1{Error::VeryBad};
+            const Unexpected u2{Error::VeryBad};
+            REQUIRE(u1 == u2);
+        }
+        {
+            const Unexpected u1{Error::Terrible};
+            const Unexpected u2{Error::Terrible};
+            REQUIRE(u1 == u2);
+        }
+        {
+            const Unexpected u1{Error::Bad};
+            const Unexpected u2{Error::Terrible};
+            REQUIRE(u1 != u2);
+        }
+
+        // Comparison
+        {
+            const Unexpected u1{Error::Bad};
+            const Unexpected u2{Error::VeryBad};
+            const Unexpected u3{Error::Terrible};
+
+            REQUIRE(u1 < u2);
+            REQUIRE(u2 < u3);
+            REQUIRE(u1 < u3);
+
+            REQUIRE(u1 <= u2);
+            REQUIRE(u2 <= u3);
+            REQUIRE(u1 <= u3);
+
+            REQUIRE(u2 <= u2);
+            REQUIRE(u3 <= u3);
+            REQUIRE(u3 <= u3);
+
+            REQUIRE(u2 > u1);
+            REQUIRE(u3 > u2);
+            REQUIRE(u3 > u1);
+
+            REQUIRE(u2 >= u1);
+            REQUIRE(u3 >= u2);
+            REQUIRE(u3 >= u1);
+
+            REQUIRE(u2 >= u2);
+            REQUIRE(u3 >= u3);
+            REQUIRE(u3 >= u3);
+        }
+    }
+    SECTION("Expected") {
+        // Equality
+        {
+            const Expected u1{Error::Bad};
+            const Expected u2{Error::Bad};
+            REQUIRE(u1 == u2);
+        }
+        {
+            const Expected u1{Error::VeryBad};
+            const Expected u2{Error::VeryBad};
+            REQUIRE(u1 == u2);
+        }
+        {
+            const Expected u1{Error::Terrible};
+            const Expected u2{Error::Terrible};
+            REQUIRE(u1 == u2);
+        }
+        {
+            const Expected u1{Error::Bad};
+            const Expected u2{Error::Terrible};
+            REQUIRE(u1 != u2);
+        }
+
+        // Comparison
+        {
+            const Expected u1{Error::Bad};
+            const Expected u2{Error::VeryBad};
+            const Expected u3{Error::Terrible};
+
+            REQUIRE(u1 < u2);
+            REQUIRE(u2 < u3);
+            REQUIRE(u1 < u3);
+
+            REQUIRE(u1 <= u2);
+            REQUIRE(u2 <= u3);
+            REQUIRE(u1 <= u3);
+
+            REQUIRE(u2 <= u2);
+            REQUIRE(u3 <= u3);
+            REQUIRE(u3 <= u3);
+
+            REQUIRE(u2 > u1);
+            REQUIRE(u3 > u2);
+            REQUIRE(u3 > u1);
+
+            REQUIRE(u2 >= u1);
+            REQUIRE(u3 >= u2);
+            REQUIRE(u3 >= u1);
+
+            REQUIRE(u2 >= u2);
+            REQUIRE(u3 >= u3);
+            REQUIRE(u3 >= u3);
+        }
+    }
+}
 
 } // namespace
+
+#pragma GCC diagnostic pop

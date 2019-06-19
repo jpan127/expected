@@ -32,6 +32,29 @@ void throw_exception(__attribute__((unused)) const bool condition,
 #endif
 }
 
+template <typename A, typename B = A, typename = std::void_t<>>
+struct is_equality_comparable : std::false_type {};
+
+template <typename A, typename B>
+struct is_equality_comparable<A, B,
+    std::void_t<decltype(std::declval<A>() == std::declval<B>())>>
+    : std::true_type {};
+
+template <typename A, typename B = A>
+constexpr bool is_equality_comparable_v = is_equality_comparable<A, B>::value;
+
+template <typename A, typename B = A, typename = std::void_t<>>
+struct is_comparable : std::false_type {};
+
+template <typename A, typename B>
+struct is_comparable<A, B,
+    std::void_t<decltype(std::declval<A>() < std::declval<B>())>> : std::true_type {};
+
+template <typename A, typename B = A>
+constexpr bool is_comparable_v = is_comparable<A, B>::value;
+
+} // namespace detail
+
 /// Represents an "unexpected" object or the E / Error of an [expected] object
 template <typename ErrorType,
             std::enable_if_t<!std::is_reference_v<ErrorType>> * = nullptr,
@@ -65,9 +88,8 @@ class unexpected {
     ErrorType error_;
 };
 
-} // namespace detail
-
-template <typename ValueType, typename ErrorType>
+template <typename ValueType, typename ErrorType,
+            std::enable_if_t<std::is_nothrow_constructible_v<ErrorType>> * = nullptr>
 class expected {
     using SelfType = expected<ValueType, ErrorType>;
 
@@ -92,7 +114,7 @@ class expected {
     template <typename E = ErrorType,
                 std::enable_if_t<std::is_same_v<E, ErrorType>> * = nullptr,
                 std::enable_if_t<std::is_copy_constructible_v<E>> * = nullptr>
-    constexpr expected(const detail::unexpected<ErrorType> &error) : error_(error), has_value_(false){}
+    constexpr expected(const unexpected<ErrorType> &error) : error_(error), has_value_(false){}
 
     /// [ValueType] move constructor
     template <typename V = ValueType,
@@ -209,7 +231,7 @@ class expected {
   private:
     union {
         ValueType value_;
-        detail::unexpected<ErrorType> error_;
+        unexpected<ErrorType> error_;
     };
 
     bool has_value_ = false;
@@ -248,9 +270,115 @@ class expected {
 };
 
 template <typename ErrorType, typename ... Args>
-constexpr detail::unexpected<ErrorType> make_unexpected(Args && ... args) {
-    using Type = detail::unexpected<ErrorType>;
+constexpr unexpected<ErrorType> make_unexpected(Args && ... args) {
+    using Type = unexpected<ErrorType>;
     return Type{std::forward<Args>(args)...};
+}
+
+template <typename ErrorType,
+            std::enable_if_t<detail::is_equality_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator==(const unexpected<ErrorType> &a,
+                          const unexpected<ErrorType> &b) {
+    return (a.value() == b.value());
+}
+
+template <typename ErrorType,
+            std::enable_if_t<detail::is_equality_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator!=(const unexpected<ErrorType> &a,
+                          const unexpected<ErrorType> &b) {
+    return !(operator==(a, b));
+}
+
+template <typename ErrorType,
+            std::enable_if_t<detail::is_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator<(const unexpected<ErrorType> &a,
+                         const unexpected<ErrorType> &b) {
+    return (a.value() < b.value());
+}
+
+template <typename ErrorType,
+            std::enable_if_t<detail::is_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator<=(const unexpected<ErrorType> &a,
+                          const unexpected<ErrorType> &b) {
+    return (operator<(a, b)) || (operator==(a, b));
+}
+
+template <typename ErrorType,
+            std::enable_if_t<detail::is_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator>(const unexpected<ErrorType> &a,
+                         const unexpected<ErrorType> &b) {
+    return !(operator<(a, b));
+}
+
+template <typename ErrorType,
+            std::enable_if_t<detail::is_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator>=(const unexpected<ErrorType> &a,
+                          const unexpected<ErrorType> &b) {
+    return (operator>(a, b)) || (operator==(a, b));
+}
+
+template <typename ValueType, typename ErrorType,
+            std::enable_if_t<detail::is_equality_comparable_v<ValueType> &&
+                             detail::is_equality_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator==(const expected<ValueType, ErrorType> &a,
+                          const expected<ValueType, ErrorType> &b) {
+    if (a.has_value() != b.has_value()) {
+        return false;
+    } else if (a.has_value()) {
+        return (a.value() == b.value());
+    } else {
+        return (a.error() == b.error());
+    }
+}
+
+template <typename ValueType, typename ErrorType,
+            std::enable_if_t<detail::is_equality_comparable_v<ValueType> &&
+                             detail::is_equality_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator!=(const expected<ValueType, ErrorType> &a,
+                          const expected<ValueType, ErrorType> &b) {
+    return !(operator==(a, b));
+}
+
+template <typename ValueType, typename ErrorType,
+            std::enable_if_t<detail::is_comparable_v<ValueType> &&
+                             detail::is_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator<(const expected<ValueType, ErrorType> &a,
+                         const expected<ValueType, ErrorType> &b) {
+    const bool a_has_value = a.has_value();
+    const bool b_has_value = b.has_value();
+    if (a_has_value && b_has_value) {
+        return (a.value() < b.value());
+    } else if (a_has_value && !b_has_value) {
+        return true;
+    } else if (!a_has_value && b_has_value) {
+        return false;
+    } else {
+        return (a.error() < b.error());
+    }
+}
+
+template <typename ValueType, typename ErrorType,
+            std::enable_if_t<detail::is_comparable_v<ValueType> &&
+                             detail::is_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator<=(const expected<ValueType, ErrorType> &a,
+                          const expected<ValueType, ErrorType> &b) {
+    return (operator<(a, b)) || (operator==(a, b));
+}
+
+template <typename ValueType, typename ErrorType,
+            std::enable_if_t<detail::is_comparable_v<ValueType> &&
+                             detail::is_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator>(const expected<ValueType, ErrorType> &a,
+                         const expected<ValueType, ErrorType> &b) {
+    return !(operator<(a, b));
+}
+
+template <typename ValueType, typename ErrorType,
+            std::enable_if_t<detail::is_comparable_v<ValueType> &&
+                             detail::is_comparable_v<ErrorType>> * = nullptr>
+constexpr bool operator>=(const expected<ValueType, ErrorType> &a,
+                          const expected<ValueType, ErrorType> &b) {
+    return (operator>(a, b)) || (operator==(a, b));
 }
 
 } // namespace pstd
