@@ -20,6 +20,9 @@ using Expected = pstd::expected<Data, Error>;
 
 static_assert(sizeof(Expected) == sizeof(Error) + 4);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+
 template <typename F>
 bool exception_thrown(F &&f) {
     try {
@@ -174,5 +177,30 @@ TEST_CASE("Dereference", "expected") {
     e = Error{};
     REQUIRE(exception_thrown([&e] { *e; }));
 }
+
+TEST_CASE("Alternatives", "expected") {
+    SECTION("Has Value") {
+        Expected e = Data{.value = 127};
+        const auto value = e.value_or(Data{.value = 721});
+        REQUIRE(value.value == 127);
+    }
+    SECTION("Alternative Value") {
+        Expected e = Error::Bad;
+        const auto value = e.value_or(Data{.value = 721});
+        REQUIRE(value.value == 721);
+    }
+    SECTION("Has Error") {
+        Expected e = Error::Bad;
+        const auto value = e.error_or(Error::Terrible);
+        REQUIRE(value == Error::Bad);
+    }
+    SECTION("Alternative Error") {
+        Expected e = Data{.value = 127};
+        const auto value = e.error_or(Error::Terrible);
+        REQUIRE(value == Error::Terrible);
+    }
+}
+
+#pragma GCC diagnostic pop
 
 } // namespace

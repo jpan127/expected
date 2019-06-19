@@ -1,9 +1,9 @@
 #pragma once
 
 #include <exception>
-#include <utility>
 #include <iostream>
 #include <type_traits>
+#include <utility>
 
 namespace pstd {
 
@@ -157,37 +157,53 @@ class expected {
         return *this;
     }
 
-    constexpr ValueType &operator*() {
+    [[nodiscard]] constexpr ValueType &operator*() {
         detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
         return value_;
     }
-    constexpr const ValueType &operator*() const {
+    [[nodiscard]] constexpr const ValueType &operator*() const {
         detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
         return value_;
     }
 
     /// Check for existence of value
-    constexpr operator bool() const noexcept { return has_value(); }
-    constexpr bool has_value() const noexcept { return has_value_; }
+    [[nodiscard]] constexpr operator bool() const noexcept { return has_value(); }
+    [[nodiscard]] constexpr bool has_value() const noexcept { return has_value_; }
 
     /// Get the value
-    ValueType &value() {
+    [[nodiscard]] ValueType &value() {
         detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
         return value_;
     }
-    const ValueType &value() const {
+    [[nodiscard]] const ValueType &value() const {
         detail::throw_exception<detail::bad_optional_access>(!has_value_, "Object does not have a value");
         return value_;
     }
 
     /// Get the error
-    ErrorType &error() {
+    [[nodiscard]] ErrorType &error() {
         detail::throw_exception<detail::bad_optional_access>(has_value_, "Object does not have an error");
         return error_.value();
     }
-    const ErrorType &error() const {
+    [[nodiscard]] const ErrorType &error() const {
         detail::throw_exception<detail::bad_optional_access>(has_value_, "Object does not have an error");
         return error_.value();
+    }
+
+    [[nodiscard]] constexpr ValueType value_or(ValueType &&alternative) const noexcept {
+        return (has_value_) ? (value_) : (std::move(alternative));
+    }
+
+    [[nodiscard]] constexpr ValueType value_or(const ValueType &alternative) const noexcept {
+        return (has_value_) ? (value_) : (alternative);
+    }
+
+    [[nodiscard]] constexpr ErrorType error_or(ErrorType &&alternative) const noexcept {
+        return (!has_value_) ? (error_.value()) : (std::move(alternative));
+    }
+
+    [[nodiscard]] constexpr ErrorType error_or(const ErrorType &alternative) const noexcept {
+        return (!has_value_) ? (error_.value()) : (alternative);
     }
 
   private:
