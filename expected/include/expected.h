@@ -107,7 +107,12 @@ class expected {
 
     /// Copy constructor
     constexpr expected(const SelfType &other) : has_value_(other.has_value_) {
-        set(other);
+        set(std::move(other));
+    }
+
+    /// Move constructor
+    constexpr expected(SelfType &&other) : has_value_(other.has_value_) {
+        set(std::move(other));
     }
 
     /// [unexpected] copy constructor
@@ -175,7 +180,7 @@ class expected {
 
     /// Copy assignment operator
     SelfType &operator=(SelfType other) {
-        set(other);
+        set(std::move(other));
         return *this;
     }
 
@@ -245,7 +250,7 @@ class expected {
 
     bool has_value_ = false;
 
-    void set(SelfType &other) {
+    void set(SelfType &&other) {
         if (other.has_value_) {
             set(std::move(other.value_));
         } else {
@@ -282,6 +287,16 @@ template <typename ErrorType, typename ... Args>
 constexpr unexpected<ErrorType> make_unexpected(Args && ... args) {
     using Type = unexpected<ErrorType>;
     return Type{std::forward<Args>(args)...};
+}
+
+template <typename ValueType, typename ErrorType,
+            std::enable_if_t<std::is_move_constructible_v<ValueType>> * = nullptr,
+            std::enable_if_t<std::is_move_constructible_v<ErrorType>> * = nullptr>
+void swap(expected<ValueType, ErrorType> &a,
+          expected<ValueType, ErrorType> &b) {
+    expected<ValueType, ErrorType> temp = std::move(a);
+    a = std::move(b);
+    b = std::move(temp);
 }
 
 template <typename ErrorType,

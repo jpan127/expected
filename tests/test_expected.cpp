@@ -332,6 +332,31 @@ TEST_CASE("Comparison", "expected") {
     }
 }
 
+TEST_CASE("Swap", "expected") {
+    SECTION("Expected") {
+        constexpr int kValueA = 777'777;
+        constexpr int kValueB = 555'555;
+        Expected a(Data{.value = kValueA});
+        Expected b(Data{.value = kValueB});
+        REQUIRE(a->value == kValueA);
+        REQUIRE(b->value == kValueB);
+        pstd::swap(a, b);
+        REQUIRE(a->value == kValueB);
+        REQUIRE(b->value == kValueA);
+    }
+    SECTION("Unexpected") {
+        constexpr Error kValueA = Error::VeryBad;
+        constexpr Error kValueB = Error::Terrible;
+        Expected a(kValueA);
+        Expected b(kValueB);
+        REQUIRE(a.error() == kValueA);
+        REQUIRE(b.error() == kValueB);
+        pstd::swap(a, b);
+        REQUIRE(a.error() == kValueB);
+        REQUIRE(b.error() == kValueA);
+    }
+}
+
 } // namespace
 
 #pragma GCC diagnostic pop
